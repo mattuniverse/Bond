@@ -71,7 +71,8 @@ create table public.avatars (
   outfit     text not null,
   accessory  text not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (owner_id)
 );
 
 alter table public.avatars enable row level security;
@@ -111,11 +112,18 @@ create table public.love_codes (
 
 alter table public.love_codes enable row level security;
 
-create policy "owner sees own codes" on public.love_codes
-  for select using (auth.uid() = owner_id);
+-- Codes are meant to be shared; any authenticated user may look one up by
+-- its code string during the claim flow. The owner can always see their own.
+create policy "codes readable by authenticated users" on public.love_codes
+  for select using (auth.role() = 'authenticated');
 
+-- The owner can list/keep their own codes, and the claimer can mark a code
+-- as used (setting used_by) when claiming it.
 create policy "any user can create a code entry" on public.love_codes
   for insert with check (auth.uid() = owner_id or used_by = auth.uid());
+
+create policy "owner or claimer updates code" on public.love_codes
+  for update using (auth.uid() = owner_id or auth.uid() = used_by);
 
 create index idx_love_codes_owner on public.love_codes (owner_id);
 create index idx_love_codes_code on public.love_codes (code);
@@ -259,6 +267,54 @@ as $$
 begin
   new.updated_at = now();
   return new;
+end;
+$$;
+
+-- Atomically validate and claim a Love Code, then create the pending
+-- connection. Runs security-definer so the claimer never needs to read
+-- another user's code row directly (avoids the RLS read/update gap).
+create or replace function public.claim_love_code(p_code text)
+returns jsonb
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  code_row public.love_codes%rowtype;
+begin
+  select * into code_row
+  from public.love_codes
+  where code = upper(p_code);
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'Oops! That Love Code doesn''t seem to work.');
+  end if;
+
+  if code_row.owner_id = auth.uid() then
+    return jsonb_build_object('ok', false, 'error', 'That''s your own Love Code - share it with your person instead.');
+  end if;
+
+  if code_row.used_by is not null then
+    return jsonb_build_object('ok', false, 'error', 'That Love Code has already been claimed.');
+  end if;
+
+  if code_row.expires_at < now() then
+    return jsonb_build_object('ok', false, 'error', 'That Love Code has expired. Ask for a fresh one!');
+  end if;
+
+  if exists (
+    select 1 from public.connections c
+    where (c.user_id = auth.uid() and c.partner_id = code_row.owner_id)
+       or (c.user_id = code_row.owner_id and c.partner_id = auth.uid())
+  ) then
+    return jsonb_build_object('ok', false, 'error', 'You two already have a connection - check your requests.');
+  end if;
+
+  update public.love_codes set used_by = auth.uid() where id = code_row.id;
+
+  insert into public.connections (user_id, partner_id, status)
+  values (code_row.owner_id, auth.uid(), 'pending');
+
+  return jsonb_build_object('ok', true);
 end;
 $$;
 

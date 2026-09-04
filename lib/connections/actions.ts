@@ -27,7 +27,7 @@ export async function generateLoveCode(): Promise<{ code: string } | { error: st
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "You need to be logged in to make a Love Code. 💕" };
+  if (!user) return { error: "You need to be logged in to make a Love Code." };
 
   const existing = await supabase
     .from("love_codes")
@@ -60,7 +60,7 @@ export async function generateLoveCode(): Promise<{ code: string } | { error: st
   }
 
   if (!inserted) {
-    return { error: "Couldn't make a Love Code right now. Try again in a moment. 🙈" };
+    return { error: "Couldn't make a Love Code right now. Try again in a moment." };
   }
 
   revalidatePath("/connection");
@@ -73,65 +73,22 @@ export async function claimLoveCode(formData: FormData): Promise<ConnectionResul
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Log in first, then we'll connect you. 💕" };
+  if (!user) return { error: "Log in first, then we'll connect you." };
 
   const raw = String(formData.get("code") ?? "").trim().toUpperCase();
   if (raw.length !== CODE_LENGTH) {
-    return { error: "That Love Code looks a little off — it should be 6 characters. 💕" };
+    return { error: "That Love Code looks a little off — it should be 6 characters." };
   }
 
-  const { data: codeRow, error: codeError } = await supabase
-    .from("love_codes")
-    .select("id, owner_id, used_by, expires_at")
-    .eq("code", raw)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("claim_love_code", { p_code: raw });
 
-  if (codeError || !codeRow) {
-    return { error: "Oops! That Love Code doesn't seem to work. 💕" };
+  if (error) {
+    return { error: "Couldn't claim that Love Code right now. Try again in a moment." };
   }
 
-  if (codeRow.owner_id === user.id) {
-    return { error: "That's your own Love Code — share it with your person instead. 💕" };
-  }
-
-  if (codeRow.used_by) {
-    return { error: "That Love Code has already been claimed. 🤍" };
-  }
-
-  if (new Date(codeRow.expires_at).getTime() < Date.now()) {
-    return { error: "That Love Code has expired. Ask for a fresh one! 💕" };
-  }
-
-  const { data: existing } = await supabase
-    .from("connections")
-    .select("id, status")
-    .or(`and(user_id.eq.${user.id},partner_id.eq.${codeRow.owner_id}),and(user_id.eq.${codeRow.owner_id},partner_id.eq.${user.id})`)
-    .maybeSingle();
-
-  if (existing) {
-    if (existing.status === "accepted") {
-      return { error: "You two are already connected. 💕" };
-    }
-    return { error: "There's already a connection here — check your pending requests. 💕" };
-  }
-
-  // Mark code used and create a pending connection (owner -> claimer).
-  const { error: usedError } = await supabase
-    .from("love_codes")
-    .update({ used_by: user.id })
-    .eq("id", codeRow.id);
-
-  if (usedError) return { error: "That Love Code just got taken. Ask for a fresh one. 🙈" };
-
-  const { error: connError } = await supabase.from("connections").insert({
-    user_id: codeRow.owner_id,
-    partner_id: user.id,
-    status: "pending",
-  });
-
-  if (connError) {
-    await supabase.from("love_codes").update({ used_by: null }).eq("id", codeRow.id);
-    return { error: "Couldn't start the connection. Try again in a moment. 💕" };
+  const result = (data ?? {}) as { ok?: boolean; error?: string };
+  if (!result.ok) {
+    return { error: result.error ?? "That Love Code doesn't seem to work." };
   }
 
   revalidatePath("/connection");
@@ -144,13 +101,13 @@ export async function respondToConnection(formData: FormData): Promise<Connectio
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Log in first, then we'll connect you. 💕" };
+  if (!user) return { error: "Log in first, then we'll connect you." };
 
   const connectionId = String(formData.get("connectionId") ?? "");
   const action = String(formData.get("action") ?? "");
 
   if (action !== "accept" && action !== "decline") {
-    return { error: "Something went wrong with that request. 🙈" };
+    return { error: "Something went wrong with that request." };
   }
 
   const { data: conn } = await supabase
@@ -161,14 +118,14 @@ export async function respondToConnection(formData: FormData): Promise<Connectio
     .eq("status", "pending")
     .maybeSingle();
 
-  if (!conn) return { error: "That request is no longer available. 🙈" };
+  if (!conn) return { error: "That request is no longer available." };
 
   const { error } = await supabase
     .from("connections")
     .update({ status: action === "accept" ? "accepted" : "declined" })
     .eq("id", conn.id);
 
-  if (error) return { error: "Couldn't update that request. Try again. 💕" };
+  if (error) return { error: "Couldn't update that request. Try again." };
 
   revalidatePath("/connection");
   return undefined;

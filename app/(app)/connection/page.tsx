@@ -7,38 +7,43 @@ export default async function ConnectionPage() {
   if (!user) return null;
 
   const now = new Date().toISOString();
-
-  const [codeRes, pendingRes] = await Promise.all([
-    supabase
-      .from("love_codes")
-      .select("code")
-      .eq("owner_id", user.id)
-      .is("used_by", null)
-      .gte("expires_at", now)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("connections")
-      .select("id, user_id")
-      .eq("partner_id", user.id)
-      .eq("status", "pending"),
-  ]);
-
-  const myCode = codeRes.data?.code ?? null;
-
+  let myCode: string | null = null;
   let pending: { id: string; requesterUsername: string }[] = [];
-  if (pendingRes.data?.length) {
-    const requesterIds = pendingRes.data.map((c) => c.user_id);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, username")
-      .in("id", requesterIds);
-    const byId = new Map(profiles?.map((p) => [p.id, p.username]));
-    pending = pendingRes.data.map((c) => ({
-      id: c.id,
-      requesterUsername: byId.get(c.user_id) ?? "someone",
-    }));
+
+  try {
+    const [codeRes, pendingRes] = await Promise.all([
+      supabase
+        .from("love_codes")
+        .select("code")
+        .eq("owner_id", user.id)
+        .is("used_by", null)
+        .gte("expires_at", now)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("connections")
+        .select("id, user_id")
+        .eq("partner_id", user.id)
+        .eq("status", "pending"),
+    ]);
+
+    myCode = codeRes.data?.code ?? null;
+
+    if (pendingRes.data?.length) {
+      const requesterIds = pendingRes.data.map((c) => c.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .in("id", requesterIds);
+      const byId = new Map(profiles?.map((p) => [p.id, p.username]));
+      pending = pendingRes.data.map((c) => ({
+        id: c.id,
+        requesterUsername: byId.get(c.user_id) ?? "someone",
+      }));
+    }
+  } catch (err) {
+    console.error("ConnectionPage load failed:", err);
   }
 
   return <ConnectionContent hasActiveCode={myCode} pending={pending} />;

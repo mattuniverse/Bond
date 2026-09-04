@@ -8,10 +8,22 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 
+// Change these to match the two test accounts you created in Supabase.
+const TEST_ACCOUNTS = [
+  { label: "Test Account A", email: "a@test.com", password: "password123" },
+  { label: "Test Account B", email: "b@test.com", password: "password123" },
+];
+
 export default function LoginPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [defaults, setDefaults] = useState({ email: "", password: "" });
+
+  function applyDefaults(account: { email: string; password: string }) {
+    setDefaults(account);
+    setError(null);
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
@@ -37,12 +49,13 @@ export default function LoginPage() {
           }
           className="space-y-4"
         >
-          <Input label="Email" name="email" type="email" autoComplete="email" required />
+          <Input label="Email" name="email" type="email" autoComplete="email" defaultValue={defaults.email} required />
           <Input
             label="Password"
             name="password"
             type="password"
             autoComplete="current-password"
+            defaultValue={defaults.password}
             required
           />
 
@@ -52,6 +65,22 @@ export default function LoginPage() {
             Come back in
           </Button>
         </form>
+
+        <div className="mt-6 flex flex-col items-center gap-2">
+          <span className="text-xs uppercase tracking-widest text-[#B8A898]">Quick fill for testing</span>
+          <div className="flex gap-2">
+            {TEST_ACCOUNTS.map((account) => (
+              <button
+                key={account.label}
+                type="button"
+                onClick={() => applyDefaults(account)}
+                className="rounded-full border border-[#E8DACE] bg-[#FDFAF6] px-3 py-1.5 text-xs font-medium text-[#7A6355] transition-colors hover:border-[#C4A882] hover:text-[#2C1A0E]"
+              >
+                {account.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <p className="mt-6 text-center text-sm text-[#9C8878]">
           New to Bond?{" "}

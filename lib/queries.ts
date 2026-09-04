@@ -15,37 +15,51 @@ export interface PartnerState {
  */
 export async function getCurrentUser() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return { supabase, user: null };
+    if (!user) return { supabase, user: null };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, username")
-    .eq("id", user.id)
-    .maybeSingle();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, username")
+      .eq("id", user.id)
+      .maybeSingle();
 
-  return { supabase, user, profile };
+    return { supabase, user, profile };
+  } catch (err) {
+    console.error("getCurrentUser failed:", err);
+    return { supabase, user: null, profile: null };
+  }
 }
 
 /** Loads the current user's avatar, accepted connection, and partner data. */
 export async function getPartnerState(userId: string): Promise<PartnerState> {
   const supabase = await createClient();
+  const empty = {
+    partnerId: null,
+    partnerUsername: null,
+    partnerAvatar: null,
+    myAvatar: null,
+    connectionId: null,
+    connectionStatus: null,
+  } satisfies PartnerState;
 
-  const { data: myAvatar } = await supabase
-    .from("avatars")
-    .select("character, face, hair, outfit, accessory")
-    .eq("owner_id", userId)
-    .maybeSingle();
+  try {
+    const { data: myAvatar } = await supabase
+      .from("avatars")
+      .select("character, face, hair, outfit, accessory")
+      .eq("owner_id", userId)
+      .maybeSingle();
 
-  const { data: conn } = await supabase
-    .from("connections")
-    .select("id, user_id, partner_id, status")
-    .or(`and(user_id.eq.${userId},status.eq.accepted),and(partner_id.eq.${userId},status.eq.accepted)`)
-    .limit(1)
-    .maybeSingle();
+    const { data: conn } = await supabase
+      .from("connections")
+      .select("id, user_id, partner_id, status")
+      .or(`and(user_id.eq.${userId},status.eq.accepted),and(partner_id.eq.${userId},status.eq.accepted)`)
+      .limit(1)
+      .maybeSingle();
 
   if (!conn || conn.status !== "accepted") {
     return {
@@ -103,4 +117,8 @@ export async function getPartnerState(userId: string): Promise<PartnerState> {
     connectionId: conn.id,
     connectionStatus: conn.status,
   };
+  } catch (err) {
+    console.error("getPartnerState failed:", err);
+    return empty;
+  }
 }

@@ -5,11 +5,17 @@ export default async function AvatarPage() {
   const { supabase, user } = await getCurrentUser();
   if (!user) return null;
 
-  const { data: avatar } = await supabase
-    .from("avatars")
-    .select("character, face, hair, outfit, accessory")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  let avatar: Record<string, string> | null = null;
+  try {
+    const { data } = await supabase
+      .from("avatars")
+      .select("character, face, hair, outfit, accessory")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+    avatar = data as Record<string, string> | null;
+  } catch (err) {
+    console.error("AvatarPage load failed:", err);
+  }
 
   return (
     <div className="space-y-6">
