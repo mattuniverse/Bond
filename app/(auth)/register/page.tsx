@@ -17,9 +17,11 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mb-2 text-5xl">💘</div>
-          <h1 className="text-3xl font-bold text-zinc-900">Join Bond</h1>
-          <p className="mt-1 text-zinc-500">A tiny world for exactly two of you.</p>
+          <svg className="mx-auto mb-3 h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="#2C1A0E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+          <h1 className="text-3xl font-light tracking-wide text-zinc-900">Join Bond</h1>
+          <p className="mt-1 text-[#9C8878]">A tiny world for exactly two of you.</p>
         </div>
 
         <form
@@ -53,9 +55,9 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-zinc-500">
+        <p className="mt-6 text-center text-sm text-[#9C8878]">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-pink-600 hover:underline">
+          <Link href="/login" className="font-medium text-[#2C1A0E] hover:underline">
             Log in
           </Link>
         </p>

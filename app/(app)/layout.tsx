@@ -13,17 +13,17 @@ const NAV = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-20 border-b border-pink-100/60 bg-white/70 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-[#E8DACE] bg-[#FAF7F2]/80 backdrop-blur">
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-3">
-          <Link href="/home" className="flex items-center gap-2 text-lg font-bold text-zinc-900">
-            <span className="text-xl">💞</span> Bond
+          <Link href="/home" className="text-lg font-light tracking-widest text-[#2C1A0E]">
+            Bond
           </Link>
           <nav className="flex items-center gap-1">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-full px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors hover:bg-pink-50 hover:text-pink-600"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-[#7A6355] transition-colors hover:bg-[#F0E6D8] hover:text-[#2C1A0E]"
               >
                 {item.label}
               </Link>

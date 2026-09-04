@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRealtime } from "@/lib/realtime/use-realtime";
 import type { PartnerState } from "@/lib/queries";
 import { AvatarRenderer } from "@/components/avatar/AvatarRenderer";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import type { AvatarConfig } from "@/types";
 
@@ -47,23 +48,22 @@ export function HomeContent({ userId, username, partner }: HomeContentProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-900">
-          Welcome, {username} <span aria-hidden>💕</span>
+        <h1 className="text-2xl font-light text-zinc-900">
+          Welcome, {username}
         </h1>
       </div>
 
       {!isConnected ? (
         <Card className="text-center">
-          <div className="mb-3 text-5xl">🤍</div>
-          <h2 className="text-xl font-semibold text-zinc-800">You're not connected yet</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-zinc-500">
+          <svg className="mx-auto mb-3 h-12 w-12" viewBox="0 0 24 24" fill="none" stroke="#C4A882" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+          <h2 className="text-xl font-medium text-zinc-800">You&apos;re not connected yet</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-[#9C8878]">
             Share a Love Code with your person to start sending affection.
           </p>
-          <Link
-            href="/connection"
-            className="mt-4 inline-flex rounded-full bg-pink-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-pink-600"
-          >
-            Connect with someone
+          <Link href="/connection" className="mt-4 inline-block">
+            <Button>Connect with someone</Button>
           </Link>
         </Card>
       ) : (
@@ -72,10 +72,10 @@ export function HomeContent({ userId, username, partner }: HomeContentProps) {
             <div className="flex items-end gap-6">
               <div className="flex flex-col items-center gap-1">
                 <AvatarRenderer config={myConfig ?? defaultConfig} size={88} />
-                <span className="text-xs font-medium text-zinc-500">You</span>
+                <span className="text-xs font-medium text-[#9C8878]">You</span>
               </div>
-              <span className="pb-8 text-2xl text-pink-300" aria-hidden>
-                💗
+              <span className="pb-8 text-2xl text-[#C4A882]" aria-hidden>
+                ×
               </span>
               <div className="flex flex-col items-center gap-1">
                 <AvatarRenderer
@@ -83,7 +83,7 @@ export function HomeContent({ userId, username, partner }: HomeContentProps) {
                   size={88}
                   className="opacity-80"
                 />
-                <span className="text-xs font-medium text-zinc-500">
+                <span className="text-xs font-medium text-[#9C8878]">
                   {partner.partnerUsername}
                 </span>
               </div>
@@ -94,22 +94,16 @@ export function HomeContent({ userId, username, partner }: HomeContentProps) {
                   partnerOnline ? "bg-emerald-500" : "bg-zinc-300"
                 }`}
               />
-              <span className="text-sm text-zinc-600">
+              <span className="text-sm text-[#7A6355]">
                 {partnerOnline ? "Online now" : "Away for now"}
               </span>
             </div>
             <div className="flex gap-3">
-              <Link
-                href="/affection"
-                className="rounded-full bg-pink-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-pink-600"
-              >
-                Send affection
+              <Link href="/affection">
+                <Button>Send affection</Button>
               </Link>
-              <Link
-                href="/history"
-                className="rounded-full border border-pink-200 bg-white px-5 py-2.5 text-sm font-medium text-pink-600 hover:bg-pink-50"
-              >
-                View history
+              <Link href="/history">
+                <Button variant="secondary">View history</Button>
               </Link>
             </div>
           </Card>
