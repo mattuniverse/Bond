@@ -18,7 +18,6 @@ create table public.profiles (
 
 alter table public.profiles enable row level security;
 
--- users read/write their own profile
 create policy "users select own profile" on public.profiles
   for select using (auth.uid() = id);
 
@@ -29,6 +28,36 @@ create policy "users update own profile" on public.profiles
   for update using (auth.uid() = id);
 
 create index idx_profiles_username on public.profiles (username);
+
+-- ============================================================
+-- CONNECTIONS (must exist before avatars, interactions, gifts, rooms)
+-- ============================================================
+create table public.connections (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  partner_id uuid not null references public.profiles(id) on delete cascade,
+  status     text not null default 'pending'
+             check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, partner_id)
+);
+
+alter table public.connections enable row level security;
+
+create policy "user sees own connections" on public.connections
+  for select using (
+    auth.uid() = user_id or auth.uid() = partner_id
+  );
+
+create policy "user initiates own connection" on public.connections
+  for insert with check (auth.uid() = user_id);
+
+create policy "user updates own connection" on public.connections
+  for update using (auth.uid() = user_id or auth.uid() = partner_id);
+
+create index idx_connections_user on public.connections (user_id);
+create index idx_connections_partner on public.connections (partner_id);
 
 -- ============================================================
 -- AVATARS
@@ -47,7 +76,6 @@ create table public.avatars (
 
 alter table public.avatars enable row level security;
 
--- avatar visible to owner and their connected partner
 create policy "avatar visible to owner or connection" on public.avatars
   for select using (
     auth.uid() = owner_id
@@ -83,50 +111,14 @@ create table public.love_codes (
 
 alter table public.love_codes enable row level security;
 
--- owner can read their own codes
 create policy "owner sees own codes" on public.love_codes
   for select using (auth.uid() = owner_id);
 
--- matching/accepting flow: a user may claim a code they were given
--- (server function enforces the connection rules; this allows the row insert)
 create policy "any user can create a code entry" on public.love_codes
   for insert with check (auth.uid() = owner_id or used_by = auth.uid());
 
 create index idx_love_codes_owner on public.love_codes (owner_id);
 create index idx_love_codes_code on public.love_codes (code);
-
--- ============================================================
--- CONNECTIONS
--- ============================================================
-create table public.connections (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references public.profiles(id) on delete cascade,
-  partner_id uuid not null references public.profiles(id) on delete cascade,
-  status     text not null default 'pending'
-             check (status in ('pending', 'accepted', 'declined')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (user_id, partner_id)
-);
-
-alter table public.connections enable row level security;
-
--- a user sees connection rows they are a party to
-create policy "user sees own connections" on public.connections
-  for select using (
-    auth.uid() = user_id or auth.uid() = partner_id
-  );
-
--- a user can initiate a connection as the requester
-create policy "user initiates own connection" on public.connections
-  for insert with check (auth.uid() = user_id);
-
--- a user (requester or partner) can update the connection (accept/decline/pending)
-create policy "user updates own connection" on public.connections
-  for update using (auth.uid() = user_id or auth.uid() = partner_id);
-
-create index idx_connections_user on public.connections (user_id);
-create index idx_connections_partner on public.connections (partner_id);
 
 -- ============================================================
 -- INTERACTIONS
@@ -142,13 +134,11 @@ create table public.interactions (
 
 alter table public.interactions enable row level security;
 
--- sender and receiver read interactions they're part of
 create policy "sender or receiver reads interaction" on public.interactions
   for select using (
     auth.uid() = sender_id or auth.uid() = receiver_id
   );
 
--- sender writes an interaction (server action validates connection)
 create policy "sender writes interaction" on public.interactions
   for insert with check (
     auth.uid() = sender_id
@@ -245,7 +235,6 @@ create index idx_rooms_connection on public.rooms (connection_id);
 -- TRIGGERS: keep updated_at fresh + auto-create profile
 -- ============================================================
 
--- auto-create a profile row on signup via trigger hook
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -263,7 +252,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- generic updated_at trigger
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
